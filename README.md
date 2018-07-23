@@ -95,7 +95,12 @@ poll phase有两个主要功能：
  一旦poll队列空了，event loop将会检查timers（假设之前有timers被scheduled），看哪个timer的时间阈值已经到了。如果一个或者更多的timers时间阈值已经到了，event loop将会回撤到timers phase来执行这些timers的callbacks。
  
 **(4) check**
-在poll phase已经完成之后，会直接地执行check phase的callbacks。如果poll phase变得空闲，
+在poll phase已经完成之后，check phase允许我们来直接执行callbacks。如果poll phase空闲并且脚本已经用setImmediate()排队了，event loop会继续处理check phase，而不是一直在那里等待。
+setImmediate()是一个特殊的timer，运行在event loop单独的phase中。在poll phase已经完成之后，它使用libuv API scheduled callbacks并执行。
+一般地，执行代码对时候，event loop将最终到达poll phase，并在poll phase中等待incoming connection，request 等等。然而，如果一个callback已经被setImmediate() scheduled，并且此时poll phase是空闲的，poll phase将结束并且继续到check phase而不是一直等待poll events。
+
+**(5) close callbacks**
+如果socket或者某个处理过程突然关闭（比如：socket.destroy()），`close`事件将会在该phase被触发。不然它将被process.nextTick()触发。
 
 
 
