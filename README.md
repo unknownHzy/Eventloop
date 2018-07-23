@@ -120,6 +120,12 @@ setImmediate跟setTimeout这些定时器的执行顺序会在很大程度上依�
 
 
 **综上所述**
-process.nextTick会先于下一次event loop被处理。即会排在event queue的最后。
+
+process.nextTick会先于下一次event loop被处理。它还有不让event loop继续的优点，比如在eventloop继续之前给用户一个警告，可能是有用的。
+
+
+关于nextTickQueue：nextTickQueue就是在使用process.nextTick(callback)的时候，将callback加入到nextTickQueue中
+https://cnodejs.org/topic/4f16442ccae1f4aa2700109b
+
   
   
