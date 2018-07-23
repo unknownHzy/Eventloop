@@ -37,8 +37,8 @@
 
 在每次event loop之后， Nodejs会检查是否正在等待任何异步I/O或者定时器，如果没有，那么会干净地关闭。
 
-**Phases in Detail**
-(1) times
+**Phases in Detail** 
+**(1) times**
     
     setTimeout(() => {
         //This is callback
@@ -78,6 +78,25 @@ someAsyncOperation(() => {
 
 *Node: 为了防止poll phase阻塞住event loop，在libuv（实现了Nodejs的event loop和平台所有的异步行为的C库）为更多的events停止轮寻的之前，libuv有一个依赖系统的轮寻上限值，到达这个值之后，不管后面是否继续轮寻，就直接停掉了。*
     
+**(2) pending callbacks**
+这个phase为系统操作执行callbacks，例如TCP errors类型。比如当尝试连接的时候，如果一个TCP socket接收到`ECONNREFUSED`，一些*nix系统想要等到错误被报出来。这将在pending callbacks队列化被执行。
+
+**(3) poll**
+poll phase有两个主要功能：
+    1. 计算poll phase将会阻塞event loop多久，并且为I/O轮寻，然后
+    2. 处理poll队列中对events
+
+当event loop进入poll phase的时候（假设此时没有timers被scheduled），下面其中之一的情形将发生：
+    * 如果poll队列`不为空`，event loop将**同步地执行**整个队列中callbacks，直到整个队列中的callbacks已经被执行完，或者系统上限已经到达。
+    * 如果poll队列`为空`，以下情形之一将发生：
+        ** 如果脚本中已经被`setImmediate()` scheduled了，event loop将会结束poll phase，往下走到check phase执行这些scheduled脚本
+        ** 如果脚本中还没有被`setImmediate()` scheduled，event loop将会等待callbacks被增加到队列中，然后直接执行他们。
+        
+ 一旦poll队列空了，event loop将会检查timers（假设之前有timers被scheduled），看哪个timer的时间阈值已经到了。如果一个或者更多的timers时间阈值已经到了，event loop将会回撤到timers phase来执行这些timers的callbacks。
+ 
+**(4) check**
+在poll phase已经完成之后，会直接地执行check phase的callbacks。如果poll phase变得空闲，
+
 
 
 
