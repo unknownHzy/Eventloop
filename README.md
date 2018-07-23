@@ -28,6 +28,7 @@
   因为任何这些操作，可能会引入更多对操作和已经被处理的new events，这些都会被内核队列化（也就是说操作引起的新的操作或已经被处理的new events，都会在`poll phase`中排队），当poll events正在被处理，poll events能够被队列化。 结果，长时间运行的callback能够允许poll phase对运行时间超过定时器对阈值。详情参见timers和poll sctions。
   
 **3. Phases Overview**
+
 1）timers： 这个phase会执行`setTimeout()`跟`setInterval()`对callbacks
 2）pending callbacks: 执行异步I/O的callbacks， 会被推迟到下一次event loop
 3）idle，prepare: 只是内部使用
@@ -79,9 +80,11 @@ someAsyncOperation(() => {
 *Node: 为了防止poll phase阻塞住event loop，在libuv（实现了Nodejs的event loop和平台所有的异步行为的C库）为更多的events停止轮寻的之前，libuv有一个依赖系统的轮寻上限值，到达这个值之后，不管后面是否继续轮寻，就直接停掉了。*
     
 **(2) pending callbacks**
+
 这个phase为系统操作执行callbacks，例如TCP errors类型。比如当尝试连接的时候，如果一个TCP socket接收到`ECONNREFUSED`，一些*nix系统想要等到错误被报出来。这将在pending callbacks队列化被执行。
 
 **(3) poll**
+
 poll phase有两个主要功能：
     1. 计算poll phase将会阻塞event loop多久，并且为I/O轮寻，然后
     2. 处理poll队列中对events
@@ -95,12 +98,23 @@ poll phase有两个主要功能：
  一旦poll队列空了，event loop将会检查timers（假设之前有timers被scheduled），看哪个timer的时间阈值已经到了。如果一个或者更多的timers时间阈值已经到了，event loop将会回撤到timers phase来执行这些timers的callbacks。
  
 **(4) check**
+
 在poll phase已经完成之后，check phase允许我们来直接执行callbacks。如果poll phase空闲并且脚本已经用setImmediate()排队了，event loop会继续处理check phase，而不是一直在那里等待。
 setImmediate()是一个特殊的timer，运行在event loop单独的phase中。在poll phase已经完成之后，它使用libuv API scheduled callbacks并执行。
 一般地，执行代码对时候，event loop将最终到达poll phase，并在poll phase中等待incoming connection，request 等等。然而，如果一个callback已经被setImmediate() scheduled，并且此时poll phase是空闲的，poll phase将结束并且继续到check phase而不是一直等待poll events。
 
 **(5) close callbacks**
-如果socket或者某个处理过程突然关闭（比如：socket.destroy()），`close`事件将会在该phase被触发。不然它将被process.nextTick()触发。
+
+如果socket或者某个处理过程突然关闭（比如：socket.destroy()），`close`事件将会在该phase被触发.`不然它将被process.nextTick()触发`。
+
+**setImmediate() VS setTimeout()**
+`setImmediate()`与`setTimeout()` 是相似的，但是会根据他们被调用的方式由不同对行为。
+ * setImmediate(): 一旦poll phase完成了，就会执行check phase的 setImmediate callback.
+ * setTimeout(): 在最小threshold（>= threshold）的ms数已经过去之后，将会执行timer phase的setTimeout callback.
+ 
+setImmediate跟setTimeout这些定时器的执行顺序会在很大程度上依赖他们被调用的内容。如果他们都是在main module被调用，那么时间将跟处理性能相关（可能受到在机器上运行对其他应用的影响）。
+
+例如，若运行下面的脚本，不是在I/O的callback(I/O cycle)中
 
 
 
