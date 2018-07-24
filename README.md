@@ -123,6 +123,16 @@ setImmediate跟setTimeout这些定时器的执行顺序会在很大程度上依�
 
 process.nextTick会先于下一次event loop被处理。它还有不让event loop继续的优点，比如在eventloop继续之前给用户一个警告，可能是有用的。
 
+现在对理解是：
+process.nextTick(callback)中的callback会被加到当前event loop的phase的call stack对最后面，所以会在event loop进入下一个phase之前被处理。
+process.nextTick()与setImmediate()：
+    * process.nextTick()直接在当前phase被触发，无论多少个嵌套都一样。
+    * setImmediate()在event loop接下来对迭代过程或者tick中的check phase中触发。
+*推荐开发在所有的case中使用setImmediate()，因为这样更容易推理（并且代码能与环境有更好的兼容性，比如浏览器的JS）* 
+
+**Why use process.nextTick()？
+  
+
 
 关于nextTickQueue：nextTickQueue就是在使用process.nextTick(callback)的时候，将callback加入到nextTickQueue中
 https://cnodejs.org/topic/4f16442ccae1f4aa2700109b
