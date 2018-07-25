@@ -114,8 +114,51 @@ setImmediate()是一个特殊的timer，运行在event loop单独的phase中。�
  
 setImmediate跟setTimeout这些定时器的执行顺序会在很大程度上依赖他们被调用的内容。如果他们都是在main module被调用，那么时间将跟处理性能相关（可能受到在机器上运行对其他应用的影响）。
 
-例如，若运行下面的脚本，不是在I/O的callback(I/O cycle)中
+例如，若运行下面的脚本，是在main module中，而不是在I/O的callback(I/O cycle)中,**他们的执行顺序是不确定的，因为依赖于系统的处理性能：**
+```Javascipt
+   // timeout_vs_immediate.js
+    setTimeout(() => {
+        console.log('timeout');
+    }, 0);
 
+    setImmediate(() => {
+        console.log('immediate');
+    }); 
+```
+```Javascript
+    $ node timeout_vs_immediate.js
+    timeout
+    immediate
+
+    $ node timeout_vs_immediate.js
+    immediate
+    timeout 
+```
+然而，**如果把上面对代码移动到I/O的callback中(I/O cycle)，immediate callback总是会先执行**
+```Javascript
+// timeout_vs_immediate.js
+const fs = require('fs');
+
+fs.readFile(__filename, () => {
+  setTimeout(() => {
+    console.log('timeout');
+  }, 0);
+  setImmediate(() => {
+    console.log('immediate');
+  });
+});
+
+```
+```Javascript
+$ node timeout_vs_immediate.js
+immediate
+timeout
+
+$ node timeout_vs_immediate.js
+immediate
+timeout
+```
+**相对于setTimeout(),使用setImmediate()的主要优势是： 在同一个I/O的callback(I/O cycle)中的任何timers，setImmediate()将总是先被执行，与存在多少计时器无关。**
 
 
 
