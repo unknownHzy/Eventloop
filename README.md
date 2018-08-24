@@ -1,7 +1,7 @@
 # Eventloop
-对eventloop对理解
+对eventloopde的理解
 
-翻译从官网的eventloop
+翻译自Node官网的eventloop
 
 **1. 什么是Event Loop**
 尽管JS是单线程的，但是Event Loop通过`将请求操作调度到系统内核（如果是异步操作）`，使得NodeJs能够实现`非阻塞I/O`操作。
