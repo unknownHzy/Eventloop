@@ -1,5 +1,7 @@
 
 # Connect是Express4.x之前版本的核心，为了更好理解Express，需要熟悉Connect。
+Connect的版本：3.6.6
+Node版本：6.12.
 
 
 ## 任务： （能出uml图画出核心流程）
@@ -22,6 +24,7 @@
     http.createServer(app).listen(4000);
 
 #### 1）http.createServer(requestListener) 返回一个httpServer实例，将requestListener函数绑定到'request'事件中
+const app = connect(); //connect就是下面createServer的引用而已。
 https://nodejs.org/dist/latest-v10.x/docs/api/http.html#http_http_createserver_options_requestlistener
    
     exports.createServer = function(requestListener) {
@@ -34,14 +37,14 @@ https://nodejs.org/dist/latest-v10.x/docs/api/http.html#http_http_createserver_o
           }
       }
     };
-    
-**问题1：什么时候触发这个request事件呢？
-在_http_server.js中的**
+**问题1：何时绑定requestListener：在执行 http.createServer(app)；时, 此处的app就是requestListener**
+**问题2：何时触发这个requestListener呢？ 在触发了connect事件，调用connectionListener时，触发了requestListener。**
+**在_http_server.js中的**
 
     function connectionListener(socket) {
       ...
       if (req.headers.expect !== undefined &&
-        (req.httpVersionMajor == 1 && req.httpVersionMinor == 1) &&
+        (req.httpVersionMajor === 1 && req.httpVersionMinor === 1) &&
         continueExpression.test(req.headers['expect'])) {
         res._expect_continue = true;
         if (EventEmitter.listenerCount(self, 'checkContinue') > 0) {
@@ -55,8 +58,9 @@ https://nodejs.org/dist/latest-v10.x/docs/api/http.html#http_http_createserver_o
       }
       ...
     }
-**问题2： 在self.emit('request', req, res); 触发request的时候，向requestListener传递了两个参数：http的req与res
-所以requestListener至少得是function(req, res, ...) {}
+    
+**问题3： 在self.emit('request', req, res); 触发request事件的时候，向requestListener传递了两个参数：http的req与res
+所以requestListener至少得是function(req, res, ...) {}**
 
 ### 二、const app = connect(); 做了什么
     module.exports = createServer;
